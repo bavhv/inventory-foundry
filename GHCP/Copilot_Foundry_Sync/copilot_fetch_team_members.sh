@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ORG="intel-innersource"
-TEAM_SLUG="1source-github-copilot-business-user"
+ORG="Copilot-Management-For-Foundry"
+TEAM_SLUG="copilot-business-user-foundry"
 OUTPUT_FILE="team_members.txt"
 
 export http_proxy="http://proxy-dmz.intel.com:912"
