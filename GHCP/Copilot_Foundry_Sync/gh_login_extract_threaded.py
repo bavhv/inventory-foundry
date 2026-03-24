@@ -240,7 +240,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--username", default=os.getenv("LDAPUSERNAME"), help="1Source username")
     parser.add_argument("--password", default=os.getenv("LDAPPASSWORD"), help="1Source password")
-    parser.add_argument("--input", default="ags_emails.txt", help="Input email file")
+    parser.add_argument("--input", default="ags_emails_foundry.txt", help="Input email file")
     parser.add_argument("--output", default="gh_login_output.csv", help="Output CSV file")
 
     args = parser.parse_args()
