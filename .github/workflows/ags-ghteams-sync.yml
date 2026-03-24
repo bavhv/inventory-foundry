@@ -11,8 +11,8 @@ on:
         options:
           - 'true'
           - 'false'
-  schedule:
-     - cron: '35 */6 * * *'   # 01:30 AM IST daily
+  # schedule:
+  #    - cron: '35 */6 * * *'   # 01:30 AM IST daily
 
 concurrency:
   group: ags-ghteams-sync
@@ -38,7 +38,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run gh_login_extract_threaded.py
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         env:
           LDAPUSERNAME: ${{ secrets.LDAPUSERNAME }}
           LDAPPASSWORD: ${{ secrets.LDAPPASSWORD }}
@@ -52,8 +52,8 @@ jobs:
         with:
           name: gh-login-output
           path: |
-            GHCP/AGS_GHTeams_Sync/gh_login_output.csv
-            GHCP/AGS_GHTeams_Sync/*.log
+            GHCP/Copilot_Foundry_Sync/gh_login_output.csv
+            GHCP/Copilot_Foundry_Sync/*.log
           retention-days: 7
 
   # -------------------------------------------------
@@ -67,11 +67,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Make script executable
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         run: chmod +x copilot_fetch_team_members.sh
 
       - name: Run copilot_fetch_team_members.sh
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         env:
           TOKEN: ${{ secrets.GH_PAT }}
         run: ./copilot_fetch_team_members.sh
@@ -81,8 +81,8 @@ jobs:
         with:
           name: copilot-team-members
           path: |
-            GHCP/AGS_GHTeams_Sync/team_members.txt
-            GHCP/AGS_GHTeams_Sync/*.log
+            GHCP/Copilot_Foundry_Sync/team_members.txt
+            GHCP/Copilot_Foundry_Sync/*.log
           retention-days: 7
 
   # -------------------------------------------------
@@ -104,10 +104,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: gh-login-output
-          path: GHCP/AGS_GHTeams_Sync
+          path: GHCP/Copilot_Foundry_Sync
 
       - name: Run generate_ags_audit.py
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         run: python generate_ags_audit.py
 
       - name: Upload AGS audit outputs
@@ -115,10 +115,10 @@ jobs:
         with:
           name: ags-audit-output
           path: |
-            GHCP/AGS_GHTeams_Sync/ags_members.txt
-            GHCP/AGS_GHTeams_Sync/no_gh_login_found_from_ags.txt
-            GHCP/AGS_GHTeams_Sync/ags_processing_audit_log.txt
-            GHCP/AGS_GHTeams_Sync/*.log
+            GHCP/Copilot_Foundry_Sync/ags_members.txt
+            GHCP/Copilot_Foundry_Sync/no_gh_login_found_from_ags.txt
+            GHCP/Copilot_Foundry_Sync/ags_processing_audit_log.txt
+            GHCP/Copilot_Foundry_Sync/*.log
           retention-days: 7
 
   # -------------------------------------------------
@@ -138,20 +138,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ags-audit-output
-          path: GHCP/AGS_GHTeams_Sync
+          path: GHCP/Copilot_Foundry_Sync
 
       - name: Download Copilot team members
         uses: actions/download-artifact@v4
         with:
           name: copilot-team-members
-          path: GHCP/AGS_GHTeams_Sync
+          path: GHCP/Copilot_Foundry_Sync
 
       - name: Make script executable
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         run: chmod +x AGS_GHTeams_Sync_Diff.sh
 
       - name: Run AGS_GHTeams_Sync_Diff.sh
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         run: ./AGS_GHTeams_Sync_Diff.sh
 
       - name: Upload diff results
@@ -159,10 +159,10 @@ jobs:
         with:
           name: ags-gh-diff-output
           path: |
-            GHCP/AGS_GHTeams_Sync/common_users.txt
-            GHCP/AGS_GHTeams_Sync/only_in_AGS.txt
-            GHCP/AGS_GHTeams_Sync/only_in_GH_Teams.txt
-            GHCP/AGS_GHTeams_Sync/*.log
+            GHCP/Copilot_Foundry_Sync/common_users.txt
+            GHCP/Copilot_Foundry_Sync/only_in_AGS.txt
+            GHCP/Copilot_Foundry_Sync/only_in_GH_Teams.txt
+            GHCP/Copilot_Foundry_Sync/*.log
           retention-days: 14
 
   # -------------------------------------------------
@@ -190,10 +190,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ags-gh-diff-output
-          path: GHCP/AGS_GHTeams_Sync
+          path: GHCP/Copilot_Foundry_Sync
 
       - name: Run github_team_sync.py
-        working-directory: GHCP/AGS_GHTeams_Sync
+        working-directory: GHCP/Copilot_Foundry_Sync
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -205,7 +205,7 @@ jobs:
         with:
           name: github-team-sync-logs
           path: |
-            GHCP/AGS_GHTeams_Sync/1source_all_users.txt
-            GHCP/AGS_GHTeams_Sync/not_in_1source_all_users.txt
-            GHCP/AGS_GHTeams_Sync/*.log
+            GHCP/Copilot_Foundry_Sync/1source_all_users.txt
+            GHCP/Copilot_Foundry_Sync/not_in_1source_all_users.txt
+            GHCP/Copilot_Foundry_Sync/*.log
           retention-days: 30
