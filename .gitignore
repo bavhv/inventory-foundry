@@ -1,0 +1,7 @@
+/log/*
+*log
+__pycache__
+*archive*
+*report*
+.venv/
+.venv*/
