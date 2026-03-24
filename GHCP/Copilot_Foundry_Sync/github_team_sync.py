@@ -7,8 +7,8 @@ from datetime import datetime
 # ============================
 # User Configurable Variables
 # ============================
-ORG = "intel-innersource"
-TEAM_SLUG = "1source-github-copilot-business-user"
+ORG = "Copilot-Management-For-Foundry"
+TEAM_SLUG = "copilot-business-user-foundry"
 ALL_USERS_TEAM_SLUG = "1source-all-users"
 
 ALL_USERS_FILE = "1source_all_users.txt"
@@ -172,27 +172,21 @@ def main():
     logging.info(f"📥 Users to Add: {len(users_to_add)}")
     logging.info(f"🧹 Users to Remove: {len(users_to_remove)}")
 
-    # 🔑 NEW STEP: Fetch baseline team users
-    all_users_team_members = fetch_team_members(
-        ALL_USERS_TEAM_SLUG,
-        ALL_USERS_FILE
-    )
+    # # 🔑 NEW STEP: Fetch baseline team users
+    # all_users_team_members = fetch_team_members(
+    #     ALL_USERS_TEAM_SLUG,
+    #     ALL_USERS_FILE
+    # )
 
-    # Clear previous not-eligible file (fresh run)
-    if os.path.exists(NOT_IN_ALL_USERS_FILE):
-        os.remove(NOT_IN_ALL_USERS_FILE)
+    # # Clear previous not-eligible file (fresh run)
+    # if os.path.exists(NOT_IN_ALL_USERS_FILE):
+    #     os.remove(NOT_IN_ALL_USERS_FILE)
 
     # 🔁 Controlled add logic
     for user in users_to_add:
-        if user in all_users_team_members:
-            logging.info(f"✅ {user} found in {ALL_USERS_TEAM_SLUG}, proceeding to add.")
-            add_user(user)
-        else:
-            logging.warning(
-                f"⚠️ {user} NOT found in {ALL_USERS_TEAM_SLUG}, skipping add."
-            )
-            write_not_in_all_users(user)
-
+        logging.info(f"✅ Proceeding to add {user} in {TEAM_SLUG} Teams.")
+        add_user(user)
+        
     # for user in users_to_remove:
     #     remove_user(user)
 
