@@ -1,0 +1,211 @@
+name: AGS GitHub Copilot Foundry TeamSync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (no changes made to GitHub teams)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  schedule:
+     - cron: '35 */6 * * *'   # 01:30 AM IST daily
+
+concurrency:
+  group: ags-ghteams-sync
+  cancel-in-progress: false
+
+jobs:
+  # -------------------------------------------------
+  # Stage 1A: gh_login_extract_threaded.py
+  # -------------------------------------------------
+  gh-login-extract:
+    runs-on: ["innersource.prod.amr.dind"]
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run gh_login_extract_threaded.py
+        working-directory: GHCP/AGS_GHTeams_Sync
+        env:
+          LDAPUSERNAME: ${{ secrets.LDAPUSERNAME }}
+          LDAPPASSWORD: ${{ secrets.LDAPPASSWORD }}
+        run: |
+          python gh_login_extract_threaded.py \
+            --username "${LDAPUSERNAME}" \
+            --password "${LDAPPASSWORD}"
+
+      - name: Upload gh_login output
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-login-output
+          path: |
+            GHCP/AGS_GHTeams_Sync/gh_login_output.csv
+            GHCP/AGS_GHTeams_Sync/*.log
+          retention-days: 7
+
+  # -------------------------------------------------
+  # Stage 1B: copilot_fetch_team_members.sh (parallel)
+  # -------------------------------------------------
+  copilot-fetch:
+    runs-on: ["innersource.prod.amr.dind"]
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make script executable
+        working-directory: GHCP/AGS_GHTeams_Sync
+        run: chmod +x copilot_fetch_team_members.sh
+
+      - name: Run copilot_fetch_team_members.sh
+        working-directory: GHCP/AGS_GHTeams_Sync
+        env:
+          TOKEN: ${{ secrets.GH_PAT }}
+        run: ./copilot_fetch_team_members.sh
+
+      - name: Upload team members output
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-team-members
+          path: |
+            GHCP/AGS_GHTeams_Sync/team_members.txt
+            GHCP/AGS_GHTeams_Sync/*.log
+          retention-days: 7
+
+  # -------------------------------------------------
+  # Stage 2: generate_ags_audit.py
+  # -------------------------------------------------
+  generate-ags-audit:
+    runs-on: ["innersource.prod.amr.dind"]
+    needs: gh-login-extract
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Download gh_login output
+        uses: actions/download-artifact@v4
+        with:
+          name: gh-login-output
+          path: GHCP/AGS_GHTeams_Sync
+
+      - name: Run generate_ags_audit.py
+        working-directory: GHCP/AGS_GHTeams_Sync
+        run: python generate_ags_audit.py
+
+      - name: Upload AGS audit outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ags-audit-output
+          path: |
+            GHCP/AGS_GHTeams_Sync/ags_members.txt
+            GHCP/AGS_GHTeams_Sync/no_gh_login_found_from_ags.txt
+            GHCP/AGS_GHTeams_Sync/ags_processing_audit_log.txt
+            GHCP/AGS_GHTeams_Sync/*.log
+          retention-days: 7
+
+  # -------------------------------------------------
+  # Stage 3: AGS_GHTeams_Sync_Diff.sh
+  # -------------------------------------------------
+  ags-ghteams-sync-diff:
+    runs-on: ["innersource.prod.amr.dind"]
+    needs:
+      - generate-ags-audit
+      - copilot-fetch
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download AGS audit output
+        uses: actions/download-artifact@v4
+        with:
+          name: ags-audit-output
+          path: GHCP/AGS_GHTeams_Sync
+
+      - name: Download Copilot team members
+        uses: actions/download-artifact@v4
+        with:
+          name: copilot-team-members
+          path: GHCP/AGS_GHTeams_Sync
+
+      - name: Make script executable
+        working-directory: GHCP/AGS_GHTeams_Sync
+        run: chmod +x AGS_GHTeams_Sync_Diff.sh
+
+      - name: Run AGS_GHTeams_Sync_Diff.sh
+        working-directory: GHCP/AGS_GHTeams_Sync
+        run: ./AGS_GHTeams_Sync_Diff.sh
+
+      - name: Upload diff results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ags-gh-diff-output
+          path: |
+            GHCP/AGS_GHTeams_Sync/common_users.txt
+            GHCP/AGS_GHTeams_Sync/only_in_AGS.txt
+            GHCP/AGS_GHTeams_Sync/only_in_GH_Teams.txt
+            GHCP/AGS_GHTeams_Sync/*.log
+          retention-days: 14
+
+  # -------------------------------------------------
+  # Stage 4: github_team_sync.py
+  # -------------------------------------------------
+  github-team-sync:
+    runs-on: ["innersource.prod.amr.dind"]
+    needs: ags-ghteams-sync-diff
+    timeout-minutes: 30
+    env:
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          
+      - name: Download diff results
+        uses: actions/download-artifact@v4
+        with:
+          name: ags-gh-diff-output
+          path: GHCP/AGS_GHTeams_Sync
+
+      - name: Run github_team_sync.py
+        working-directory: GHCP/AGS_GHTeams_Sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Running github_team_sync.py (DRY_RUN=${DRY_RUN})"
+          python github_team_sync.py
+
+      - name: Upload final sync logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-team-sync-logs
+          path: |
+            GHCP/AGS_GHTeams_Sync/1source_all_users.txt
+            GHCP/AGS_GHTeams_Sync/not_in_1source_all_users.txt
+            GHCP/AGS_GHTeams_Sync/*.log
+          retention-days: 30
